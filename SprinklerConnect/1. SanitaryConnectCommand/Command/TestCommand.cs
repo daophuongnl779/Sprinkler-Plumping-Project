@@ -19,8 +19,8 @@ namespace Model.RevitCommand
             var fixure = sel.PickElement<FamilyInstance>();
             var pipe = sel.PickElement<Pipe>();
 
-            var firstOffset = 500.0.milimeter2Feet();
-            var secondOffset = 500.0.milimeter2Feet();
+            var firstOffset = 200.0.milimeter2Feet();
+            var secondOffset = 200.0.milimeter2Feet();
 
             var systemTypeId = pipe.MEPSystem.GetTypeId();
             var pipeTypeId = pipe.GetTypeId();
