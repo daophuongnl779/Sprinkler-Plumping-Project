@@ -32,6 +32,12 @@
                 </StackPanel>
             </StackPanel>
         </GroupBox>
+        <Image Width="118" Height="50">
+            <Image.Source>
+                <BitmapImage DecodePixelWidth="200" UriSource="F:\15. REVIT API\SprinklerConnect\SprinklerConnect\Library\Image\123.jpg" />
+            </Image.Source>
+        </Image>
+
     </StackPanel>
 </Window>
 <!--Visibility="{Binding U_ValueVisibility}"-->
