@@ -62,8 +62,7 @@ namespace Model.RevitCommand
 
                 var points = new List<XYZ> { point1, point2, point3, point4, point5 };
                 var pipes = CreatePipes(doc,systemTypeId, pipeTypeId, levelId, points);
-                // Thêm set Diameter ống theo DN của fixture
-
+                
                 //Connect(doc, pipes);
 
                 //var pipe5 = pipes.Last();
