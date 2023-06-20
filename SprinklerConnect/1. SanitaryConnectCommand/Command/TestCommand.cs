@@ -1,10 +1,12 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using Model.Entity;
 using Model.Form;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Utility;
@@ -19,9 +21,6 @@ namespace Model.RevitCommand
             var fixure = sel.PickElement<FamilyInstance>();
             var pipe = sel.PickElement<Pipe>();
 
-            var firstOffset = 500.0.milimeter2Feet();
-            var secondOffset = 500.0.milimeter2Feet();
-
             var systemTypeId = pipe.MEPSystem.GetTypeId();
             var pipeTypeId = pipe.GetTypeId();
             var levelId = pipe.LookupParameter("Reference Level").AsElementId();
@@ -32,10 +31,12 @@ namespace Model.RevitCommand
 
                 var fixtureConnector = fixure.MEPModel.ConnectorManager.UnusedConnectors.Cast<Connector>()
                     .First(x => x.CoordinateSystem.BasisZ.IsParallel(XYZ.BasisZ));
-                var fixtureOrigin = fixtureConnector.Origin;
+                //var fixtureConnector = fixure.MEPModel.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
+
+               var fixtureOrigin = fixtureConnector.Origin;
 
                 var pipeLine = ((pipe.Location as LocationCurve)!.Curve as Line)!;
-                var pipeDirec = pipeLine.Direction;
+                var pipeDir = pipeLine.Direction;
 
                 var projectPoint = pipeLine.GetProjectPoint(fixtureOrigin);
 
@@ -43,44 +44,76 @@ namespace Model.RevitCommand
                 var v2 = new XYZ(v1.X, v1.Y, 0);
                 var fixtureDir = v2.Normalize();
 
-                var point1 = projectPoint;
-                var point2 = projectPoint + (XYZ.BasisZ + fixtureDir) * firstOffset;
+                var pipeLength = 200.0.milimeter2Feet();
+                var slope = 0.02;
+                //head
+                var point1 = projectPoint + pipeDir * pipeLength;
+                //var point2 = GetPoint(projectPoint,fixtureDir*pipeLength, slope);
+
+                var _point2 = projectPoint + fixtureDir * pipeLength;
+                var point2 = new XYZ(_point2.X, _point2.Y, _point2.Z + (_point2 - point1).GetLength() * slope);
+
+
+                var _point3 = new XYZ(fixtureOrigin.X, fixtureOrigin.Y, point2.Z) - fixtureDir * pipeLength;
+                var point3 = new XYZ(_point3.X,_point3.Y, _point3.Z + (_point3- point2).GetLength() * slope);
+
+                var point4 = new XYZ(fixtureOrigin.X, fixtureOrigin.Y, point2.Z) + XYZ.BasisZ * pipeLength;
                 var point5 = fixtureOrigin;
 
-                var tempPoint = new XYZ(point5.X, point5.Y, point2.Z);
-                var point4 = tempPoint + XYZ.BasisZ * secondOffset;
-                var point3 = tempPoint - fixtureDir * secondOffset;
+                var points = new List<XYZ> { point1, point2, point3, point4, point5 };
+                var pipes = CreatePipes(doc,systemTypeId, pipeTypeId, levelId, points);
+                // Thêm set Diameter ống theo DN của fixture
 
-                var point = new List<XYZ> { point1, point2, point3, point4, point5 };
-                var pipes = CreatePipes(doc, systemTypeId, pipeTypeId, levelId, point);
+                //Connect(doc, pipes);
+
+                //var pipe5 = pipes.Last();
+                //var pipe5Connector = pipe5.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
+                //pipe5Connector.ConnectTo(fixtureConnector);
+
+                var splitpipe = SplitPipe(doc, pipe, point1);
+
+                var _point6 = point1 + fixtureDir* pipeLength;
+                var point6 = new XYZ(_point6.X, _point6.Y, _point6.Z + (_point6 - point1).GetLength() * slope);
+
+                var tempPipe = CreatePipes(doc, systemTypeId, pipeTypeId, levelId, new List<XYZ> { point1, point6 }).First();
+                
+                //var teeFitting= Connect(doc, splitpipe[0], splitpipe[1], tempPipe);
+                //doc.Delete(tempPipe.Id);
+
+                //var basisX = pipeDir;
+                //var basisY = basisX.CrossProduct(-XYZ.BasisZ);
+
+                //var pipe1 = pipes.First();
+                ////var pipe1Dir = ((pipe1.Location as LocationCurve)!.Curve as Line)!.Direction;
+                //var pipe1Dir = (_point2 - point1).Normalize();
+                //var angle = pipe1Dir.GetAngle(basisX, basisY);
+
+                //teeFitting.ParametersMap.Cast<Parameter>().First(x => x.Definition.Name.ToUpper().Contains("ANGLE")).Set(angle);
+
+                //var pipe1Connector = pipe1.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
+                //var teeFittingConnector = teeFitting.MEPModel.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
+                //pipe1Connector.ConnectTo(teeFittingConnector);
 
                 transaction.Commit();
             }
-
         }
-        public List<Pipe> CreatePipes(Document doc, ElementId systemTypeId, ElementId pipeTypeId, ElementId levelId, List<XYZ> points)
 
+        //Phương thức tạo hàng loạt đối tượng Pipes nối tiếp nhau trong danh sách Point có sẵn
+        public List<Pipe> CreatePipes(Document doc, ElementId systemTypeId, ElementId pipeTypeId, ElementId levelId, List<XYZ> points)
         {
+            //Khởi tạo trước danh sách rỗng Pipe
             var pipes = new List<Pipe>();
+
             for (int i = 0; i < points.Count - 1; i++)
             {
                 var startPoint = points[i];
                 var endPoint = points[i + 1];
                 var pipe = Pipe.Create(doc, systemTypeId, pipeTypeId, levelId, startPoint, endPoint);
+                var Dia = 110.0.milimeter2Feet();
+                pipe.LookupParameter("Diameter").Set(Dia);
                 pipes.Add(pipe);
             }
             return pipes;
-        }
-
-        // Phương thức kết nối tập hợp Pipe liên tiếp nhau bằng ElbowFitting
-        public void Connect(Document doc, List<Pipe> pipes)
-        {
-            for (int i = 0; i < pipes.Count - 1; i++)
-            {
-                var firstPipe = pipes[i];
-                var secondPipe = pipes[i + 1];
-                Connect(doc, firstPipe, secondPipe);
-            }
         }
 
         //  KẾT NỐI 2 ĐỐI TƯỢNG PIPE BẰNG ElbowFitting
@@ -112,28 +145,9 @@ namespace Model.RevitCommand
             }
             doc.Create.NewElbowFitting(connector1, connector2);
         }
-        // Phương thức tách ống Pipe thành 2 đoạn ở vị trí chỉ định SplitPoint
-        public List<Pipe> SplitPipe(Document doc, Pipe pipe, XYZ splitPoint)
-        {
-            var pipeLocation = (pipe.Location as LocationCurve)!;
-            var pipeLine = (pipeLocation.Curve as Line)!;
 
-            // Thiết lập lại thông tin định vị của Pipe tương ứng từ StartPoint tới SplitPoint
-            var startPoint = pipeLine.GetEndPoint(0);
-            var endPoint = pipeLine.GetEndPoint(1);
-
-            pipeLocation.Curve = Line.CreateBound(startPoint, splitPoint);
-
-            var systemTypeId = pipe.MEPSystem.GetTypeId();
-            var pipeTypeId = pipe.GetTypeId();
-            var levelId = pipe.LookupParameter("Reference Level").AsElementId();
-            // Tạo ra đoạn Pipe thứ 2
-            var secondPartPipe = Pipe.Create(doc, systemTypeId, pipeTypeId, levelId, splitPoint, endPoint);
-            secondPartPipe.LookupParameter("Diameter").Set(pipe.LookupParameter("Diameter").AsDouble());
-
-            return new List<Pipe> { pipe, secondPartPipe };
-        }
-        public void Connect ( Document doc,Pipe pipe1,Pipe pipe2,Pipe pipe3)
+        //Phương thức kết nối 3 đối tượng bằng TeeFitting
+        public FamilyInstance Connect (Document doc,Pipe pipe1,Pipe pipe2,Pipe pipe3)
         {
             var connectors1 = pipe1.ConnectorManager.UnusedConnectors.Cast<Connector>();
             var connectors2 = pipe2.ConnectorManager.UnusedConnectors.Cast<Connector>();
@@ -174,7 +188,49 @@ namespace Model.RevitCommand
                     minDistance= distance;
                 }
             }
-            doc.Create.NewTeeFitting(connector1,connector2, connector3);
+            var teeFitting= doc.Create.NewTeeFitting(connector1,connector2, connector3);
+            return teeFitting;
         }
+
+        // Phương thức kết nối tập hợp Pipe liên tiếp nhau bằng ElbowFitting
+        public void Connect(Document doc, List<Pipe> pipes)
+        {
+            for (int i = 0; i < pipes.Count - 1; i++)
+            {
+                var firstPipe = pipes[i];
+                var secondPipe = pipes[i + 1];
+                Connect(doc, firstPipe, secondPipe);
+            }
+        }
+
+        // Phương thức tách ống Pipe thành 2 đoạn ở vị trí chỉ định SplitPoint
+        public List<Pipe> SplitPipe(Document doc, Pipe pipe, XYZ splitPoint)
+        {
+            var pipeLocation = (pipe.Location as LocationCurve)!;
+            var pipeLine = (pipeLocation.Curve as Line)!;
+
+            // Thiết lập lại thông tin định vị của Pipe tương ứng từ StartPoint tới SplitPoint
+            var startPoint = pipeLine.GetEndPoint(0);
+            var endPoint = pipeLine.GetEndPoint(1);
+
+            pipeLocation.Curve = Line.CreateBound(startPoint, splitPoint);
+
+            var systemTypeId = pipe.MEPSystem.GetTypeId();
+            var pipeTypeId = pipe.GetTypeId();
+            var levelId = pipe.LookupParameter("Reference Level").AsElementId();
+            // Tạo ra đoạn Pipe thứ 2
+            var secondPartPipe = Pipe.Create(doc, systemTypeId, pipeTypeId, levelId, splitPoint, endPoint);
+            secondPartPipe.LookupParameter("Diameter").Set(pipe.LookupParameter("Diameter").AsDouble());
+
+            return new List<Pipe> { pipe, secondPartPipe };
+        }
+
+        //TẠO ỐNG TẠM THỜI
+        //public XYZ GetPoint (XYZ point, XYZ vec, double slope)
+        //{
+        //    var tempPoint = point + vec;
+        //    return new XYZ(tempPoint.X + tempPoint.Y, tempPoint.Z + vec.GetLength() * slope);
+        //}
     }
+
 }
