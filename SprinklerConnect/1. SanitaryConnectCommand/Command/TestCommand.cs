@@ -36,7 +36,7 @@ namespace Model.RevitCommand
                var fixtureOrigin = fixtureConnector.Origin;
 
                 var pipeLine = ((pipe.Location as LocationCurve)!.Curve as Line)!;
-                var pipeDir = pipeLine.Direction;
+                var pipeDir = -pipeLine.Direction;
 
                 var projectPoint = pipeLine.GetProjectPoint(fixtureOrigin);
 
@@ -62,12 +62,12 @@ namespace Model.RevitCommand
 
                 var points = new List<XYZ> { point1, point2, point3, point4, point5 };
                 var pipes = CreatePipes(doc,systemTypeId, pipeTypeId, levelId, points);
-                
-                //Connect(doc, pipes);
 
-                //var pipe5 = pipes.Last();
-                //var pipe5Connector = pipe5.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
-                //pipe5Connector.ConnectTo(fixtureConnector);
+                Connect(doc, pipes);
+
+                var pipe5 = pipes.Last();
+                var pipe5Connector = pipe5.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
+                pipe5Connector.ConnectTo(fixtureConnector);
 
                 var splitpipe = SplitPipe(doc, pipe, point1);
 
@@ -75,11 +75,11 @@ namespace Model.RevitCommand
                 var point6 = new XYZ(_point6.X, _point6.Y, _point6.Z + (_point6 - point1).GetLength() * slope);
 
                 var tempPipe = CreatePipes(doc, systemTypeId, pipeTypeId, levelId, new List<XYZ> { point1, point6 }).First();
-                
-                //var teeFitting= Connect(doc, splitpipe[0], splitpipe[1], tempPipe);
-                //doc.Delete(tempPipe.Id);
 
-                //var basisX = pipeDir;
+                var teeFitting = Connect(doc, splitpipe[0], splitpipe[1], tempPipe);
+                doc.Delete(tempPipe.Id);
+
+                //var basisX = -pipeDir;
                 //var basisY = basisX.CrossProduct(-XYZ.BasisZ);
 
                 //var pipe1 = pipes.First();
@@ -87,7 +87,7 @@ namespace Model.RevitCommand
                 //var pipe1Dir = (_point2 - point1).Normalize();
                 //var angle = pipe1Dir.GetAngle(basisX, basisY);
 
-                //teeFitting.ParametersMap.Cast<Parameter>().First(x => x.Definition.Name.ToUpper().Contains("ANGLE")).Set(angle);
+                //teeFitting.ParametersMap.Cast<Parameter>().First(x => x.Definition.Name.Equals("ANGLE3")).Set(angle);
 
                 //var pipe1Connector = pipe1.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
                 //var teeFittingConnector = teeFitting.MEPModel.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
