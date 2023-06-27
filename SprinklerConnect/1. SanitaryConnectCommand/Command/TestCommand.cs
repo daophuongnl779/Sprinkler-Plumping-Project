@@ -79,15 +79,15 @@ namespace Model.RevitCommand
                 var teeFitting = Connect(doc, splitpipe[0], splitpipe[1], tempPipe);
                 doc.Delete(tempPipe.Id);
 
-                //var basisX = -pipeDir;
-                //var basisY = basisX.CrossProduct(-XYZ.BasisZ);
+                var basisX = pipeDir;
+                var basisY = basisX.CrossProduct(-XYZ.BasisZ);
 
-                //var pipe1 = pipes.First();
-                ////var pipe1Dir = ((pipe1.Location as LocationCurve)!.Curve as Line)!.Direction;
-                //var pipe1Dir = (_point2 - point1).Normalize();
-                //var angle = pipe1Dir.GetAngle(basisX, basisY);
+                var pipe1 = pipes.First();
+                //var pipe1Dir = ((pipe1.Location as LocationCurve)!.Curve as Line)!.Direction;
+                var pipe1Dir = (point2 - point1).Normalize();
+                var angle = pipe1Dir.GetAngle(basisX, basisY);
 
-                //teeFitting.ParametersMap.Cast<Parameter>().First(x => x.Definition.Name.Equals("ANGLE3")).Set(angle);
+                teeFitting.ParametersMap.Cast<Parameter>().First(x => x.Definition.Name.Equals("ANGLE3")).Set(angle);
 
                 //var pipe1Connector = pipe1.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
                 //var teeFittingConnector = teeFitting.MEPModel.ConnectorManager.UnusedConnectors.Cast<Connector>().First();

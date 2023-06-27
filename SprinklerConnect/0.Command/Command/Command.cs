@@ -43,7 +43,6 @@ namespace Model.RevitCommand
                 //Connector? teeConnector1 = null, teeConnector2 = null;
 
                 var points = new List<XYZ>();
-
                 var mainPartialPipes = mainConnectors.Select(mainConnector =>
                 {
                     var mainConnectorDirection = mainConnector.CoordinateSystem.BasisZ;
@@ -60,7 +59,7 @@ namespace Model.RevitCommand
 
 
                 //var modelLines = mainPartialPipes.Select(x => x.ConnectorManager.UnusedConnectors.Cast<Connector>()).First()
-                //                .Select(x => Line.CreateBound(x.Origin, x.Origin+XYZ.BasisZ*200.0.milimeter2Feet()).CreateModel()).ToList();
+                //                .Select(x => Line.CreateBound(x.Origin, x.Origin + XYZ.BasisZ * 200.0.milimeter2Feet()).CreateModel()).ToList();
                 //sel.SetElement(modelLines);
                 //doc.Delete(mainPipe.Id);
 

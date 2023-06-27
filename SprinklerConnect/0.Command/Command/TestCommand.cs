@@ -38,28 +38,36 @@ namespace Model.RevitCommand
                 var mainLocationLine = ((mainPipe.Location as LocationCurve)!.Curve as Line)!;
                 var projectPoint = mainLocationLine.GetProjectPoint(sprinklerConnectorOrigin);
 
+                var minimumDistance = 20.0.milimeter2Feet();
+
                 var mainPipeLine = ((mainPipe.Location as LocationCurve)!.Curve as Line)!;
                 var mainPipeDirection = mainPipeLine.Direction;
                 var mainConnectors = mainPipe.ConnectorManager.Connectors.Cast<Connector>()
-                                     .OrderBy(connector => connector.CoordinateSystem.BasisZ.IsOppositeDirection(mainPipeDirection) ? 0 : 1).ToList();
+                .OrderBy(connector => connector.CoordinateSystem.BasisZ.IsOppositeDirection(mainPipeDirection) ? 0 : 1);  /*.ToList();*/
 
-                // Output
+                var mainPipeTypeId = mainPipe.PipeType.Id;
+
+                var points = new List<XYZ>();
+
                 var mainPartialPipes = mainConnectors.Select((mainConnector, i) =>
                 {
                     var mainConnectorDirection = mainConnector.CoordinateSystem.BasisZ;
                     var mainPipeEndPoint = projectPoint;
-
+                    points.Add(mainPipeEndPoint);
+                    
                     Pipe? mainPartialPipe = null;
                     if (i == 0)
                     {
+                        //var firstConnector = mainConnector.AllRefs.Cast<Connector>().First();
+                        var refConector = mainConnector.AllRefs.Cast<Connector>().First(refConn => refConn.Origin.IsEqual(mainConnector.Origin));
                         //var modelLines = mainConnector.AllRefs.Cast<Connector>().
                         //                 Select(refConn => Line.CreateBound(refConn.Origin, refConn.Origin + XYZ.BasisZ * 200.0.milimeter2Feet())
                         //                 .CreateModel()).ToList();
-
-                        var refConector = mainConnector.AllRefs.Cast<Connector>().First(refConn => refConn.Origin.IsEqual(mainConnector.Origin));
-                        mainPartialPipe = Pipe.Create(doc, pipeTypeId, levelId, refConector, mainPipeEndPoint);
+                        mainPartialPipe = Pipe.Create(doc, mainPipeTypeId, levelId, refConector, mainPipeEndPoint);
                     }
+
                     else
+
                     {
                         mainPartialPipe = mainPipe;
                         (mainPartialPipe.Location as LocationCurve)!.Curve = Line.CreateBound(mainPipeEndPoint, mainConnector.Origin);
@@ -67,9 +75,10 @@ namespace Model.RevitCommand
                     return mainPartialPipe;
                 }).ToList();
 
-                var mainPartialConnectors = mainPartialPipes.Select(x => x.ConnectorManager.UnusedConnectors.Cast<Connector>().First()).ToList();
-                doc.Create.NewTeeFitting(mainPartialConnectors[0], mainPartialConnectors[1], teeConnector3);
+                var mainPartialConnectors = mainPartialPipes.Select(pipe => pipe.ConnectorManager.Connectors.Cast<Connector>()
+                .First(x => points.Any(point => x.Origin.IsEqual(point)))).ToList();
 
+                doc.Create.NewTeeFitting(mainPartialConnectors[0], mainPartialConnectors[1], teeConnector3);
 
                 transaction.Commit();
             }
