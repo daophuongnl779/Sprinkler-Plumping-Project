@@ -47,5 +47,9 @@ namespace Utility
         {
             return new XYZ(pnt.X, pnt.Y, 0);
         }
+        public static XYZ Sloping(this XYZ point, XYZ refrencePoint, double slope)
+        {
+            return point + XYZ.BasisZ * (refrencePoint - point).GetLength() * slope;
+        }
     }
 }
