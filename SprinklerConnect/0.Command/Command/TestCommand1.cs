@@ -32,6 +32,10 @@ namespace Model.RevitCommand
 
                 var endPoint = sprinklerConnectorOrigin + sprinklerConnectorDirection * 200.0.milimeter2Feet();
                 var secondPipe = Pipe.Create(doc, pipeTypeId, levelId, sprinklerConnector, endPoint);
+
+                var Dia = 32.0.milimeter2Feet();
+                secondPipe.LookupParameter("Diameter").Set(Dia);
+
                 var teeConnector3 = secondPipe.ConnectorManager.UnusedConnectors.Cast<Connector>().First();
 
                 var mainLocationLine = ((mainPipe.Location as LocationCurve)!.Curve as Line)!;
@@ -56,6 +60,8 @@ namespace Model.RevitCommand
                     points.Add(mainPipeEndPoint);
 
                     var mainPartialPipe = Pipe.Create(doc, mainPipeTypeId, levelId, mainConnector, mainPipeEndPoint);
+
+                    
 
                     return mainPartialPipe;
                 }).ToList();
